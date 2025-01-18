@@ -19,7 +19,13 @@ const writeBundle = (styles) => {
     }
 }
 
+const checkBundle = () => {
+    const bundlePath = path.join(__dirname, "project-dist", "bundle.css");
+    return fsPromises.unlink(bundlePath).catch(() => {})
+}
+
 (async () => {
+    await checkBundle()
     const styles = await getStyles();
     writeBundle(styles);
 })()

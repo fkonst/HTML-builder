@@ -47,9 +47,49 @@ const copyAssets = async (dest, src = path.join(__dirname, "assets")) => {
     }
 }
 
+const readComponents = () => {
+    return fsPromises.readdir(path.join(__dirname, "components"), { withFileTypes: true});
+}
+
+const insertComponents = async (str) => {
+    const components = await readComponents();
+    let html = str;
+    const open = "{{";
+    const close = "}}";
+    while (html.indexOf(open) !== -1) {
+        let tag = html.slice(html.indexOf(open) + 2, html.indexOf(close));
+        for (let file of components) {
+            const fileName = path.basename(file.name, ".html");
+            if (tag === fileName) {
+                const filePath = path.join(__dirname, "components", file.name);
+                const compHtml = await fsPromises.readFile(filePath)
+                html = html.replace(`{{${tag}}}`, compHtml);
+                break;
+            }
+        }
+    }
+    return html;
+}
+
+const writeHtml = async (dist, file = path.join(__dirname, "template.html")) => {
+    const index = await createFile(dist, "index.html");
+    const readTemplate = await fs.createReadStream(file);
+    
+    readTemplate.on("data", data => {
+        insertComponents(data.toString())
+                    .then(html => index.stream.write(html))  
+    })
+}
+
+const cleanFolder = async () => {
+    const distPath = path.join(__dirname, "project-dist");
+    await fsPromises.rm(distPath, { recursive: true, force: true});
+}
+
 (async () => {
+    await cleanFolder();
     const dist = await createFolder(__dirname ,"project-dist");
     await writeStyles(dist);
     await copyAssets(dist);
-    // const index = await createFile(dist, "index.html");
+    await writeHtml(dist);
 })()
